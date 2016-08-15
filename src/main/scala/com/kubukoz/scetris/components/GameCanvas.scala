@@ -1,0 +1,54 @@
+package com.kubukoz.scetris.components
+
+import java.awt.{Color, Dimension}
+
+import com.kubukoz.scetris.domain.{Direction, DirectionKey}
+import com.kubukoz.scetris.meta.Config._
+import com.softwaremill.quicklens._
+
+import scala.swing.event.KeyPressed
+import scala.swing.{Component, _}
+
+class GameCanvas extends Component
+  with CanDrawLines {
+  preferredSize = GameCanvas.calculateSize
+
+  var figure: Figure = ZFigure
+
+  focusable = true
+  requestFocus()
+
+  listenTo(keys)
+
+  reactions += {
+    case KeyPressed(_, DirectionKey(direction), _, _) =>
+      moveFigure(direction)
+      repaint()
+  }
+
+  def moveFigure(direction: Direction): Unit = {
+    figure = figure
+      .modify(_.position.x).using(_ + direction.x)
+      .modify(_.position.y).using(_ + direction.y)
+  }
+
+  override protected def paintComponent(g: Graphics2D): Unit = {
+    drawGrid(g)
+  }
+
+  private def drawGrid(g: Graphics2D): Unit = {
+    g.setColor(Color.LIGHT_GRAY)
+    drawVerticalLines(g)
+    drawHorizontalLines(g)
+
+    g.setColor(Color.GREEN)
+    figure.draw(g)
+  }
+}
+
+object GameCanvas {
+  def calculateSize = new Dimension(
+    gridSize * tilesWidth + gridBorder * (tilesWidth - 1),
+    gridSize * tilesHeight + gridBorder * (tilesHeight - 1)
+  )
+}
