@@ -24,7 +24,7 @@ object Main extends SimpleSwingApplication {
     Future {
       while (true) {
         Thread.sleep(refreshRate)
-        canvas.repaint()
+        canvas.step()
       }
     }
 

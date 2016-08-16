@@ -1,6 +1,6 @@
 package com.kubukoz.scetris.components
 
-import com.kubukoz.scetris.domain.Offset
+import com.kubukoz.scetris.domain.{Offset, Rotation}
 
 import scala.swing._
 
@@ -16,8 +16,8 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset]) {
     blocks foreach (_.draw(g))
   }
 
-  def rotatedRight = copy(
-    offsets = offsets.map(_.rotated)
+  def rotated(rotation: Rotation) = copy(
+    offsets = offsets.map(_.rotated(rotation))
   )
 }
 

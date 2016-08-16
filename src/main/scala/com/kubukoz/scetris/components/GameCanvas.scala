@@ -2,7 +2,7 @@ package com.kubukoz.scetris.components
 
 import java.awt.{Color, Dimension}
 
-import com.kubukoz.scetris.domain.{Direction, DirectionKey, Offset}
+import com.kubukoz.scetris.domain._
 import com.kubukoz.scetris.meta.Config._
 
 import scala.swing.event.{Key, KeyPressed}
@@ -10,9 +10,11 @@ import scala.swing.{Component, _}
 
 class GameCanvas extends Component
   with CanDrawLines {
-  preferredSize = GameCanvas.calculateSize
 
+
+  preferredSize = GameCanvas.calculateSize
   var figure: Figure = new ZFigure(Offset(0, 0))
+
 
   focusable = true
   requestFocus()
@@ -23,9 +25,17 @@ class GameCanvas extends Component
     case KeyPressed(_, DirectionKey(direction), _, _) =>
       moveFigure(direction)
       repaint()
-    case KeyPressed(_, Key.R, _, _) =>
-      figure = figure.rotatedRight
+    case KeyPressed(_, Key.E, _, _) =>
+      figure = figure.rotated(RightRotation)
       repaint()
+    case KeyPressed(_, Key.Q, _, _) =>
+      figure = figure.rotated(LeftRotation)
+      repaint()
+  }
+
+  def step(): Unit = {
+//    moveFigure(Direction.Down)
+    repaint()
   }
 
   def moveFigure(direction: Direction): Unit = {
