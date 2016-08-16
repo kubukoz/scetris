@@ -9,17 +9,9 @@ import scala.swing.event.{Key, KeyPressed}
 import scala.swing.{Component, _}
 
 class GameCanvas extends Component
-  with CanDrawLines {
+  with CanvasBase with CanDrawLines {
 
-
-  preferredSize = GameCanvas.calculateSize
   var figure: Figure = new ZFigure(Offset(0, 0))
-
-
-  focusable = true
-  requestFocus()
-
-  listenTo(keys)
 
   reactions += {
     case KeyPressed(_, DirectionKey(direction), _, _) =>
@@ -34,7 +26,7 @@ class GameCanvas extends Component
   }
 
   def step(): Unit = {
-//    moveFigure(Direction.Down)
+    //    moveFigure(Direction.Down)
     repaint()
   }
 
@@ -49,15 +41,15 @@ class GameCanvas extends Component
 
   override protected def paintComponent(g: Graphics2D): Unit = {
     drawGrid(g)
+
+    g.setColor(Color.GREEN)
+    figure.draw(g)
   }
 
   private def drawGrid(g: Graphics2D): Unit = {
     g.setColor(Color.LIGHT_GRAY)
     drawVerticalLines(g)
     drawHorizontalLines(g)
-
-    g.setColor(Color.GREEN)
-    figure.draw(g)
   }
 }
 
