@@ -13,6 +13,12 @@ case class Offset(x: Int, y: Int) {
 
   /**
     * Returns an absolute position - a block
-    * */
-  def toPosition(center: Offset): Block = Block(center.x + x, center.y + y)
+    **/
+  def toPosition(center: Offset): Offset = Offset(center.x + x, center.y + y)
+
+  def toBlock = Block(x, y)
+}
+
+object Offset {
+  val origin = Offset(0, 0)
 }
