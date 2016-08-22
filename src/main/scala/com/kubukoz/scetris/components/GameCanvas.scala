@@ -6,6 +6,7 @@ import com.kubukoz.scetris.domain._
 import com.kubukoz.scetris.meta.Config.Screen._
 import com.kubukoz.scetris.meta.Config._
 
+import scala.annotation.tailrec
 import scala.swing.event.KeyPressed
 import scala.swing.{Component, _}
 import scala.util.Random
@@ -30,7 +31,6 @@ class GameCanvas extends Component
       step()
     case KeyPressed(_, DirectionKey(direction), _, _) =>
       moveFigure(direction)
-      repaint()
     case KeyPressed(_, RotationKey(rotation), _, _) =>
       rotateFigure(rotation)
   }
@@ -38,24 +38,40 @@ class GameCanvas extends Component
   def rotateFigure(rotation: Rotation): Unit =
     replaceFigureIfPossible(figure.rotated(rotation))
 
+  @tailrec
+  final def checkCompleteRows(currentFigures: List[Figure]): List[Figure] = {
+    val figureOffsets = currentFigures.flatMap(fig => fig.offsets.map(_.toPosition(fig.center)))
+
+    val rowsWithOffsets = figureOffsets.groupBy(_.y)
+
+    val affectedRows = rowsWithOffsets.collect {
+      case (y, matches) if matches.length == Screen.width => y
+    }.toList
+
+    val newFigures = currentFigures.map { fig =>
+      val newOffsets = fig.offsets.filterNot(off => affectedRows.contains(off.toPosition(fig.center).y))
+
+      fig.copy(offsets = newOffsets)
+    }.filter(_.offsets.nonEmpty)
+
+    if (affectedRows.isEmpty)
+      currentFigures
+    else
+      checkCompleteRows(newFigures)
+  }
+
   def step(): Unit = {
     if (!figure.canGoDown(placedFigures)) {
-      placedFigures ::= figure
+      placedFigures = checkCompleteRows(figure :: placedFigures)
       figure = newRandomFigure()
+      repaint()
     } else {
       moveFigure(Direction.Down)
     }
-    repaint()
   }
 
-  def moveFigure(direction: Direction): Unit = {
-    replaceFigureIfPossible(figure.copy(
-      leftTop = figure.leftTop.copy(
-        figure.leftTop.x + direction.x,
-        figure.leftTop.y + direction.y
-      )
-    ))
-  }
+  def moveFigure(direction: Direction) =
+    replaceFigureIfPossible(figure.moved(direction))
 
   def replaceFigureIfPossible(newFigure: Figure): Unit = {
     if (newFigure.fitsFiguresAndScreen(placedFigures)) {
@@ -67,7 +83,6 @@ class GameCanvas extends Component
   override protected def paintComponent(g: Graphics2D): Unit = {
     drawGrid(g)
 
-    g.setColor(Color.GREEN)
     figure.draw(g)
     placedFigures.foreach(_.draw(g))
   }

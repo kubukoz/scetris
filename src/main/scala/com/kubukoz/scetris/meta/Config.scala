@@ -5,8 +5,8 @@ object Config {
   val gridBorder = 1
 
   object Screen {
-    val width = 30
-    val height = 40
+    val width = 8
+    val height = 10
   }
 
 }

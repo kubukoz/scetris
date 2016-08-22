@@ -4,20 +4,20 @@ import java.awt.Color
 
 import com.kubukoz.scetris.components.Figure._
 import com.kubukoz.scetris.domain.Offset.origin
-import com.kubukoz.scetris.domain.{Offset, Rotation}
+import com.kubukoz.scetris.domain.{Direction, Offset, Rotation}
 import com.kubukoz.scetris.meta.Config.Screen
 
 import scala.swing._
+import scala.util.Try
 
 sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) {
-
   def height = (maxYOffset(offsets) - minYOffset(offsets)).abs + 1
 
   def width = (maxXOffset(offsets) - minXOffset(offsets)).abs + 1
 
   def mirror = copy(offsets = offsets.map(off => off.copy(x = -off.x)))
 
-  private val center =
+  val center =
     Offset(
       leftTop.x - minXOffset(offsets),
       leftTop.y - minYOffset(offsets)
@@ -53,6 +53,13 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) {
     blocks foreach (_.draw(g))
   }
 
+  def moved(direction: Direction): Figure = copy(
+    leftTop = leftTop.copy(
+      leftTop.x + direction.x,
+      leftTop.y + direction.y
+    )
+  )
+
   def rotated(rotation: Rotation) = {
     val newOffsets = offsets.map(_.rotated(rotation))
     val newLeftTop = Offset(
@@ -80,11 +87,11 @@ object Figure {
     List(Z, S, L, J, I, O)
   }
 
-  private def minXOffset(elems: Set[Offset]) = elems.map(_.x).min
+  private def minXOffset(elems: Set[Offset]): Int = Try(elems.map(_.x).min).getOrElse(0)
 
-  private def maxXOffset(elems: Set[Offset]) = elems.map(_.x).max
+  private def maxXOffset(elems: Set[Offset]): Int = Try(elems.map(_.x).max).getOrElse(0)
 
-  private def minYOffset(elems: Set[Offset]) = elems.map(_.y).min
+  private def minYOffset(elems: Set[Offset]): Int = Try(elems.map(_.y).min).getOrElse(0)
 
-  private def maxYOffset(elems: Set[Offset]) = elems.map(_.y).max
+  private def maxYOffset(elems: Set[Offset]): Int = Try(elems.map(_.y).max).getOrElse(0)
 }
