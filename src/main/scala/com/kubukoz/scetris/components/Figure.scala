@@ -7,10 +7,10 @@ import com.kubukoz.scetris.domain.Offset.origin
 import com.kubukoz.scetris.domain.{Direction, Offset, Rotation}
 import com.kubukoz.scetris.meta.Config.Screen
 
-import scala.swing._
+import scala.swing.Graphics2D
 import scala.util.Try
 
-sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) {
+sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) extends Drawable {
   def height = (maxYOffset(offsets) - minYOffset(offsets)).abs + 1
 
   def width = (maxXOffset(offsets) - minXOffset(offsets)).abs + 1
@@ -23,13 +23,13 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) {
       leftTop.y - minYOffset(offsets)
     )
 
-  def canGoDown(placedFigures: List[Figure]): Boolean = {
+  def canGoDown(placedFigures: Set[Figure]): Boolean = {
     val newPosition = copy(leftTop = leftTop.copy(y = leftTop.y + 1))
 
     newPosition.fitsFiguresAndScreen(placedFigures)
   }
 
-  def fitsFiguresAndScreen(placedFigures: List[Figure]): Boolean = {
+  def fitsFiguresAndScreen(placedFigures: Set[Figure]): Boolean = {
     val positions = offsets.map(_.toPosition(center))
 
     lazy val fitsScreen = {
@@ -46,12 +46,7 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) {
     } && fitsScreen
   }
 
-  def draw(g: Graphics2D): Unit = {
-    val blocks = offsets.map(_.toPosition(center).toBlock)
-
-    g.setColor(color)
-    blocks foreach (_.draw(g))
-  }
+  override def draw: Traversable[DrawEvent] = List(DrawFigure(offsets.flatMap(_.toPosition(center).toBlock.draw), color))
 
   def moved(direction: Direction): Figure = copy(
     leftTop = leftTop.copy(
@@ -68,6 +63,13 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) {
     )
 
     copy(newLeftTop, newOffsets)
+  }
+}
+
+case class DrawFigure(blockDrawEvents: Traversable[DrawBlock], color: Color) extends DrawEvent {
+  override def execute(g: Graphics2D): Unit = {
+    g.setColor(color)
+    blockDrawEvents.foreach(_.execute(g))
   }
 }
 

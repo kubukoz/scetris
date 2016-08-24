@@ -9,22 +9,12 @@ import com.kubukoz.scetris.meta.Config._
 import scala.annotation.tailrec
 import scala.swing.event.KeyPressed
 import scala.swing.{Component, _}
-import scala.util.Random
 
-class GameCanvas extends Component
+class GameCanvas(implicit figureGenerator: () => Figure) extends Component
   with CanvasBase with CanDrawLines {
 
-  def newRandomFigure(): Figure = {
-    val tempFigure = Figure.Types(Random.nextInt(Figure.Types.length))
-      .copy(leftTop = Offset.origin)
-
-    val startingOffset = Offset((Screen.width - tempFigure.width) / 2, 0)
-
-    tempFigure.copy(leftTop = startingOffset)
-  }
-
-  var figure: Figure = newRandomFigure()
-  var placedFigures: List[Figure] = Nil
+  var figure: Figure = figureGenerator()
+  var placedFigures: Set[Figure] = Set.empty
 
   reactions += {
     case KeyPressed(_, DirectionKey(Direction.Down), _, _) =>
@@ -39,13 +29,13 @@ class GameCanvas extends Component
     replaceFigureIfPossible(figure.rotated(rotation))
 
   @tailrec
-  final def checkCompleteRows(currentFigures: List[Figure]): List[Figure] = {
+  final def checkCompleteRows(currentFigures: Set[Figure]): Set[Figure] = {
     val figureOffsets = currentFigures.flatMap(fig => fig.offsets.map(_.toPosition(fig.center)))
 
     val rowsWithOffsets = figureOffsets.groupBy(_.y)
 
     val affectedRows = rowsWithOffsets.collect {
-      case (y, matches) if matches.length == Screen.width => y
+      case (y, matches) if matches.size == Screen.width => y
     }.toList
 
     val newFigures = currentFigures.map { fig =>
@@ -62,8 +52,8 @@ class GameCanvas extends Component
 
   def step(): Unit = {
     if (!figure.canGoDown(placedFigures)) {
-      placedFigures = checkCompleteRows(figure :: placedFigures)
-      figure = newRandomFigure()
+      placedFigures = checkCompleteRows(placedFigures + figure)
+      figure = figureGenerator()
       repaint()
     } else {
       moveFigure(Direction.Down)
@@ -83,8 +73,7 @@ class GameCanvas extends Component
   override protected def paintComponent(g: Graphics2D): Unit = {
     drawGrid(g)
 
-    figure.draw(g)
-    placedFigures.foreach(_.draw(g))
+    (figure.draw ++ placedFigures.flatMap(_.draw)).foreach(_.execute(g))
   }
 
   private def drawGrid(g: Graphics2D): Unit = {
@@ -99,4 +88,6 @@ object GameCanvas {
     gridSize * width + gridBorder * (width - 1),
     gridSize * height + gridBorder * (height - 1)
   )
+
+  type FigureGenerator = () => Figure
 }
