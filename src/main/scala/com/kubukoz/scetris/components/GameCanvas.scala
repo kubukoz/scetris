@@ -16,15 +16,6 @@ class GameCanvas(implicit figureGenerator: () => Figure) extends Component
   var figure: Figure = figureGenerator()
   var placedFigures: Set[Figure] = Set.empty
 
-  reactions += {
-    case KeyPressed(_, DirectionKey(Direction.Down), _, _) =>
-      step()
-    case KeyPressed(_, DirectionKey(direction), _, _) =>
-      moveFigure(direction)
-    case KeyPressed(_, RotationKey(rotation), _, _) =>
-      rotateFigure(rotation)
-  }
-
   def rotateFigure(rotation: Rotation): Unit =
     replaceFigureIfPossible(figure.rotated(rotation))
 
