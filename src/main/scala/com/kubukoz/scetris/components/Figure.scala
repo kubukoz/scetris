@@ -5,12 +5,12 @@ import java.awt.Color
 import com.kubukoz.scetris.components.Figure._
 import com.kubukoz.scetris.domain.Offset.origin
 import com.kubukoz.scetris.domain.{Direction, Offset, Rotation}
+import com.kubukoz.scetris.drawable.{CanDraw, Drawable, FigureDrawable}
 import com.kubukoz.scetris.meta.Config.Screen
 
-import scala.swing.Graphics2D
 import scala.util.Try
 
-sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) extends Drawable {
+sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) extends CanDraw {
   def height = (maxYOffset(offsets) - minYOffset(offsets)).abs + 1
 
   def width = (maxXOffset(offsets) - minXOffset(offsets)).abs + 1
@@ -46,7 +46,7 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) ex
     } && fitsScreen
   }
 
-  override def draw: Traversable[DrawEvent] = List(DrawFigure(offsets.flatMap(_.toPosition(center).toBlock.draw), color))
+  override def draw: Drawable = FigureDrawable(offsets.map(_.toPosition(center).toBlock), color)
 
   def moved(direction: Direction): Figure = copy(
     leftTop = leftTop.copy(
@@ -63,13 +63,6 @@ sealed case class Figure(leftTop: Offset, offsets: Set[Offset], color: Color) ex
     )
 
     copy(newLeftTop, newOffsets)
-  }
-}
-
-case class DrawFigure(blockDrawEvents: Traversable[DrawBlock], color: Color) extends DrawEvent {
-  override def execute(g: Graphics2D): Unit = {
-    g.setColor(color)
-    blockDrawEvents.foreach(_.execute(g))
   }
 }
 

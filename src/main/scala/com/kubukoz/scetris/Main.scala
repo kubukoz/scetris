@@ -3,9 +3,10 @@ package com.kubukoz.scetris
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
-import com.kubukoz.scetris.components.GameCanvas.FigureGenerator
-import com.kubukoz.scetris.components.{Figure, GameCanvas, RotationKey}
-import com.kubukoz.scetris.domain.{Direction, DirectionKey, Offset, Rotation}
+import com.kubukoz.scetris.components.GameState.FigureGenerator
+import com.kubukoz.scetris.components._
+import com.kubukoz.scetris.domain._
+import com.kubukoz.scetris.drawable._
 import com.kubukoz.scetris.meta.Config.Screen
 
 import scala.concurrent.duration.DurationLong
@@ -25,15 +26,14 @@ object Main extends SimpleSwingApplication {
   }
   }
 
-  val canvas = new GameCanvas
+  val initialGameState = GameState(newRandomFigure(), Set.empty)
+
+  val canvas = GameCanvas
 
   override def top: Frame = new MainFrame {
     centerOnScreen()
     resizable = false
     contents = canvas
-    canvas.focusable = true
-    canvas.requestFocus()
-    canvas.listenTo(canvas.keys)
   }
 
   override def main(args: Array[String]): Unit = {
@@ -49,8 +49,8 @@ object Main extends SimpleSwingApplication {
       Source.repeat[GameEvent](MoveEvent(Direction.Down))
         .throttle(1, 1.second, 1, ThrottleMode.Shaping)
 
-    val updateState = Flow[GameEvent].scan(GameState())(_ modifiedWith _)
-    val drawState = Sink.foreach[GameState](_.draw())
+    val updateState = Flow[GameEvent].scan(initialGameState)(_ modifiedWith _)
+    val drawState = Sink.foreach[GameState](canvas.drawState)
 
     val eventQueue = eventSource.merge(refreshSource)
       .via(updateState)
@@ -68,22 +68,5 @@ object Main extends SimpleSwingApplication {
     eventQueue.complete()
     system.terminate()
     sys.exit(0)
-  }
-}
-
-trait GameEvent
-
-case class MoveEvent(direction: Direction) extends GameEvent
-
-case class RotateEvent(rotation: Rotation) extends GameEvent
-
-case class GameState(value: Int = 0) {
-  def modifiedWith(event: GameEvent) = {
-    println(s"(returning modified state $this+1)")
-    copy(value + 1)
-  }
-
-  def draw() = {
-    println("(drawing state)")
   }
 }
