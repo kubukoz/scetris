@@ -23,21 +23,20 @@ sealed case class Figure(leftTop: Position, offsets: Set[Offset], color: Color) 
       leftTop.y - minYOffset(offsets)
     )
 
-  def canGoDown(placedFigures: Map[Position, Color])(implicit screen: Screen): Boolean = {
+  def canGoDown(placedBlocks: Map[Position, Color])(implicit screen: Screen): Boolean = {
     val newPosition = copy(leftTop = leftTop.copy(y = leftTop.y + 1))
 
-    newPosition.fitsFiguresAndScreen(placedFigures)
+    newPosition.fitsFiguresAndScreen(placedBlocks)
   }
 
   def fitsFiguresAndScreen(placedFigures: Map[Position, Color])(implicit screen: Screen): Boolean = {
     val positions = offsets.map(_.toPosition(center))
 
     lazy val fitsScreen = {
-      val fitsScreenTop = leftTop.y >= 0
       val fitsScreenBottom = height + leftTop.y <= screen.height
       val fitsScreenLeft = leftTop.x >= 0
       val fitsScreenRight = width + leftTop.x <= screen.width
-      fitsScreenBottom && fitsScreenTop && fitsScreenLeft && fitsScreenRight
+      fitsScreenBottom && fitsScreenLeft && fitsScreenRight
     }
 
     //there is no piece that has common positions with this
