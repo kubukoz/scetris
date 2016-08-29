@@ -45,19 +45,31 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
 object GameState {
   type FigureGenerator = () => Figure
 
+  /**
+    * Removes blocks that form a complete line on the screen,
+    * and moves the blocks above by the amount of blocks
+    * equal to the amount of lines removed.
+    **/
   @tailrec
-  def withoutCompleteRows(currentFigures: Map[Position, Color])(implicit screen: Screen): Map[Position, Color] = {
-    val rowsWithPositions = currentFigures.keySet.groupBy(_.y)
+  def withoutCompleteRows(currentBlocks: Map[Position, Color])(implicit screen: Screen): Map[Position, Color] = {
+    val rowsWithPositions = currentBlocks.keySet.groupBy(_.y)
 
     val affectedRows = rowsWithPositions.collect {
       case (y, matches) if matches.size == screen.width => y
     }.toList
 
-    val newFigures = currentFigures.filterKeys { position => !affectedRows.contains(position.y) }
+    affectedRows match {
+      case Nil => currentBlocks
+      case _ =>
+        val remainingFigures = currentBlocks.filterKeys { position => !affectedRows.contains(position.y) }
 
-    if (affectedRows.isEmpty)
-      currentFigures
-    else
-      withoutCompleteRows(newFigures)
+        val newFigures = remainingFigures.map {
+          case (position, color) if position.y < affectedRows.max =>
+            (position.copy(y = position.y + affectedRows.length), color)
+          case (position, color) => (position, color)
+        }
+
+        withoutCompleteRows(newFigures)
+    }
   }
 }
