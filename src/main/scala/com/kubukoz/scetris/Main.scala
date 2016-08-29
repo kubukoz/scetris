@@ -21,11 +21,7 @@ object Main extends SimpleSwingApplication {
 
   implicit val newRandomFigure: FigureGenerator = { () => {
     val allSingletons = Figure.Singletons.all
-    val tempFigure = allSingletons(Random.nextInt(allSingletons.length))
-
-    val startingPosition = Position((screen.width - tempFigure.width) / 2, 0)
-
-    tempFigure.copy(leftTop = startingPosition)
+    allSingletons(Random.nextInt(allSingletons.length))
   }
   }
 

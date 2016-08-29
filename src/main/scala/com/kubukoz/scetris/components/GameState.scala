@@ -22,10 +22,17 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
   protected def step: GameState = {
     if (figure.canGoDown(placedFigures))
       moveFigure(Direction.Down)
-    else copy(
-      figure = figureGenerator(),
-      placedFigures = withoutCompleteRows(placedFigures ++ figure.toMap)
-    )
+    else {
+      val tempFigure = figureGenerator()
+      val startingPosition = Position((screen.width - tempFigure.width) / 2, 0)
+
+      val newFigure = tempFigure.copy(leftTop = startingPosition)
+
+      copy(
+        figure = newFigure,
+        placedFigures = withoutCompleteRows(placedFigures ++ figure.toMap)
+      )
+    }
   }
 
   protected def moveFigure(direction: Direction): GameState =
