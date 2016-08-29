@@ -14,20 +14,18 @@ object GameCanvas extends Component {
   focusable = true
   requestFocus()
   listenTo(keys)
-  preferredSize = calculateSize
 
-  def drawState(state: GameState): Unit = {
+  def drawState(state: GameState)(implicit screen: Screen): Unit = {
     drawEvent = Some(state.draw)
     repaint()
   }
 
   override protected def paintComponent(g: Graphics2D): Unit = {
-    println(drawEvent)
     drawEvent.foreach(_.execute(g))
   }
 
-  def calculateSize = new Dimension(
-    gridSize * width + gridBorder * (width - 1),
-    gridSize * height + gridBorder * (height - 1)
+  def calculateSize(screen: Screen) = new Dimension(
+    gridSize * screen.width + gridBorder * (screen.width - 1),
+    gridSize * screen.height + gridBorder * (screen.height - 1)
   )
 }

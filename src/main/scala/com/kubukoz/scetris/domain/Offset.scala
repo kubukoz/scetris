@@ -2,7 +2,7 @@ package com.kubukoz.scetris.domain
 
 import com.kubukoz.scetris.components.Block
 
-case class Position(x: Int, y: Int){
+case class Position(x: Int, y: Int) {
   def toBlock = Block(x, y)
 }
 
@@ -25,4 +25,5 @@ case class Offset(x: Int, y: Int) {
 
 object Offset {
   val origin = Offset(0, 0)
+  val originPosition = Position(0, 0)
 }

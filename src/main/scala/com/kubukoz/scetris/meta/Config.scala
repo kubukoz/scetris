@@ -4,9 +4,9 @@ object Config {
   val gridSize = 20
   val gridBorder = 1
 
-  object Screen {
-    val width = 8
-    val height = 10
-  }
+  case class Screen(width: Int, height: Int)
 
+  object Screen {
+    val Default = Screen(8, 10)
+  }
 }

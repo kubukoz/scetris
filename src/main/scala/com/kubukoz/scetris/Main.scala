@@ -3,6 +3,7 @@ package com.kubukoz.scetris
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
+import com.kubukoz.scetris.components.GameCanvas._
 import com.kubukoz.scetris.components.GameState.FigureGenerator
 import com.kubukoz.scetris.components._
 import com.kubukoz.scetris.domain._
@@ -16,17 +17,19 @@ import scala.swing.event.KeyPressed
 import scala.util.Random
 
 object Main extends SimpleSwingApplication {
+  implicit val screen = Screen.Default
+
   implicit val newRandomFigure: FigureGenerator = { () => {
-    val tempFigure = Figure.Types(Random.nextInt(Figure.Types.length))
-      .copy(leftTop = Offset.origin)
+    val allSingletons = Figure.Singletons.all
+    val tempFigure = allSingletons(Random.nextInt(allSingletons.length))
 
-    val startingOffset = Offset((Screen.width - tempFigure.width) / 2, 0)
+    val startingPosition = Position((screen.width - tempFigure.width) / 2, 0)
 
-    tempFigure.copy(leftTop = startingOffset)
+    tempFigure.copy(leftTop = startingPosition)
   }
   }
 
-  val initialGameState = GameState(newRandomFigure(), Set.empty)
+  val initialGameState = GameState(newRandomFigure(), Map.empty)
 
   val canvas = GameCanvas
 
@@ -38,6 +41,7 @@ object Main extends SimpleSwingApplication {
 
   override def main(args: Array[String]): Unit = {
     super.main(args)
+    canvas.preferredSize = calculateSize(screen)
 
     implicit val system = ActorSystem("system")
     implicit val mat = ActorMaterializer()
