@@ -28,8 +28,7 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
 
       val newFigure = tempFigure.copy(leftTop = startingPosition)
 
-      copy(
-        figure = newFigure,
+      replaceFigureIfPossible(newFigure).copy(
         placedFigures = withoutCompleteRows(placedFigures ++ figure.toMap)
       )
     }

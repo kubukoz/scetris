@@ -75,7 +75,8 @@ object Figure {
     val J = L.mirror.copy(color = Color.LIGHT_GRAY)
     val I = Figure(originPosition, (-1 to 2).map(Offset(_, 0)).toSet, Color.RED)
     val O = Figure(originPosition, Set(Offset(-1, -1), Offset(0, -1), Offset(-1, 0), Offset(0, 0)), Color.BLUE)
-    val all = List(Z, S, L, J, I, O)
+    val T = Figure(originPosition, Set(Offset(-1, 0), Offset(0, 0), Offset(1, 0), Offset(0, 1)), Color.ORANGE)
+    val all = List(Z, S, L, J, I, O, T)
   }
 
   private def minXOffset(elems: Set[Offset]): Int = Try(elems.map(_.x).min).getOrElse(0)
