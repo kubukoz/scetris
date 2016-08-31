@@ -43,13 +43,13 @@ object Main extends SimpleSwingApplication {
     implicit val mat = ActorMaterializer()
 
     val eventSource =
-      Source.queue[GameEvent](bufferSize = 100, overflowStrategy = OverflowStrategy.backpressure)
+      Source.queue[GameCommand](bufferSize = 100, overflowStrategy = OverflowStrategy.backpressure)
 
     val refreshSource =
-      Source.repeat[GameEvent](MoveEvent(Direction.Down))
+      Source.repeat[GameCommand](MoveCommand(Direction.Down))
         .throttle(1, 1.second, 1, ThrottleMode.Shaping)
 
-    val updateState = Flow[GameEvent].scan(initialGameState)(_ modifiedWith _)
+    val updateState = Flow[GameCommand].scan(initialGameState)(_ modifiedWith _)
     val drawState = Sink.foreach[GameState](canvas.drawState)
 
     val eventQueue = eventSource.merge(refreshSource)
@@ -59,11 +59,11 @@ object Main extends SimpleSwingApplication {
 
     canvas.reactions += {
       case KeyPressed(_, DirectionKey(direction), _, _) =>
-        eventQueue.offer(MoveEvent(direction))
+        eventQueue.offer(MoveCommand(direction))
       case KeyPressed(_, RotationKey(rotation), _, _) =>
-        eventQueue.offer(RotateEvent(rotation))
+        eventQueue.offer(RotateCommand(rotation))
       case KeyPressed(_, Key.Space, _, _) =>
-        eventQueue.offer(DropFigureEvent)
+        eventQueue.offer(DropFigureCommand)
     }
 
     StdIn.readLine("Press enter to close...\n")

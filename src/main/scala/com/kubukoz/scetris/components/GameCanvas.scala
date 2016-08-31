@@ -9,19 +9,19 @@ import com.kubukoz.scetris.meta.Config._
 import scala.swing.Component
 
 object GameCanvas extends Component {
-  var drawEvent: Option[Drawable] = None
+  var drawable: Option[Drawable] = None
 
   focusable = true
   requestFocus()
   listenTo(keys)
 
   def drawState(state: GameState)(implicit screen: Screen): Unit = {
-    drawEvent = Some(state.draw)
+    drawable = Some(state.draw)
     repaint()
   }
 
   override protected def paintComponent(g: Graphics2D): Unit = {
-    drawEvent.foreach(_.execute(g))
+    drawable.foreach(_.execute(g))
   }
 
   def calculateSize(screen: Screen) = new Dimension(

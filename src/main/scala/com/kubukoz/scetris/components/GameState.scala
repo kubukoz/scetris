@@ -11,11 +11,11 @@ import scala.swing.Color
 final case class GameState(figure: Figure, placedBlocks: Map[Position, Color])(implicit figureGenerator: () => Figure, screen: Screen)
   extends CanDraw {
 
-  def modifiedWith(event: GameEvent): GameState = event match {
-    case MoveEvent(Direction.Down) => step
-    case MoveEvent(direction) => moveFigure(direction)
-    case RotateEvent(direction) => rotateFigure(direction)
-    case DropFigureEvent => dropFigure
+  def modifiedWith(command: GameCommand): GameState = command match {
+    case MoveCommand(Direction.Down) => step
+    case MoveCommand(direction) => moveFigure(direction)
+    case RotateCommand(direction) => rotateFigure(direction)
+    case DropFigureCommand => dropFigure
   }
 
   @tailrec
