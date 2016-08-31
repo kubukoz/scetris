@@ -8,7 +8,7 @@ import com.kubukoz.scetris.meta.Config.Screen
 import scala.annotation.tailrec
 import scala.swing.Color
 
-final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(implicit figureGenerator: () => Figure, screen: Screen)
+final case class GameState(figure: Figure, placedBlocks: Map[Position, Color])(implicit figureGenerator: () => Figure, screen: Screen)
   extends CanDraw {
 
   def modifiedWith(event: GameEvent): GameState = event match {
@@ -19,15 +19,15 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
   }
 
   @tailrec
-  private def dropFigure: GameState = figure.canGoDown(placedFigures) match {
+  private def dropFigure: GameState = figure.canGoDown(placedBlocks) match {
     case true => copy(figure = figure.moved(Direction.Down)).dropFigure
     case false => step
   }
 
-  override def draw(implicit screen: Screen): Drawable = GameStateDrawable(figure, placedFigures)
+  override def draw(implicit screen: Screen): Drawable = GameStateDrawable(figure, placedBlocks)
 
   protected def step: GameState = {
-    if (figure.canGoDown(placedFigures))
+    if (figure.canGoDown(placedBlocks))
       moveFigure(Direction.Down)
     else {
       val tempFigure = figureGenerator()
@@ -36,7 +36,7 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
       val newFigure = tempFigure.copy(leftTop = startingPosition)
 
       replaceFigureIfPossible(newFigure).copy(
-        placedFigures = withoutCompleteRows(placedFigures ++ figure.toMap)
+        placedBlocks = blocksWithoutCompleteRows(placedBlocks ++ figure.toMap)
       )
     }
   }
@@ -48,7 +48,7 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
     replaceFigureIfPossible(figure.rotated(rotation))
 
   protected def replaceFigureIfPossible(newFigure: Figure) = {
-    if (newFigure.fitsFiguresAndScreen(placedFigures)) {
+    if (newFigure.fitsBlocksAndScreen(placedBlocks)) {
       copy(figure = newFigure)
     }
     else this
@@ -64,7 +64,7 @@ object GameState {
     * equal to the amount of lines removed.
     **/
   @tailrec
-  def withoutCompleteRows(currentBlocks: Map[Position, Color])(implicit screen: Screen): Map[Position, Color] = {
+  def blocksWithoutCompleteRows(currentBlocks: Map[Position, Color])(implicit screen: Screen): Map[Position, Color] = {
     val rowsWithPositions = currentBlocks.keySet.groupBy(_.y)
 
     val affectedRows = rowsWithPositions.collect {
@@ -74,15 +74,15 @@ object GameState {
     affectedRows match {
       case Nil => currentBlocks
       case _ =>
-        val remainingFigures = currentBlocks.filterKeys { position => !affectedRows.contains(position.y) }
+        val remainingBlocks = currentBlocks.filterKeys { position => !affectedRows.contains(position.y) }
 
-        val newFigures = remainingFigures.map {
+        val newBlocks = remainingBlocks.map {
           case (position, color) if position.y < affectedRows.max =>
             (position.copy(y = position.y + affectedRows.length), color)
-          case (position, color) => (position, color)
+          case others => others
         }
 
-        withoutCompleteRows(newFigures)
+        blocksWithoutCompleteRows(newBlocks)
     }
   }
 }

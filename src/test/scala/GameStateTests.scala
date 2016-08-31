@@ -8,7 +8,7 @@ class GameStateTests extends FlatSpec with Matchers {
   "withoutCompleteRows" should "remove complete rows" in {
     implicit val screen = Screen(4, 8)
     val i = Figure.Singletons.I
-    val initialFigures = Set(
+    val initialBlocks = Set(
       i.copy(leftTop = Position(0, 4)),
       i.copy(leftTop = Position(0, 5)),
       i.copy(leftTop = Position(0, 6)),
@@ -16,7 +16,7 @@ class GameStateTests extends FlatSpec with Matchers {
       Figure.Singletons.Z.copy(leftTop = Position(1, 2))
     ).flatMap(_.toMap).toMap
 
-    GameState.withoutCompleteRows(initialFigures) shouldBe
+    GameState.blocksWithoutCompleteRows(initialBlocks) shouldBe
       Figure.Singletons.Z.copy(leftTop = Position(1, 6)).toMap
   }
 

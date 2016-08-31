@@ -24,12 +24,10 @@ sealed case class Figure(leftTop: Position, offsets: Set[Offset], color: Color) 
     )
 
   def canGoDown(placedBlocks: Map[Position, Color])(implicit screen: Screen): Boolean = {
-    val newPosition = copy(leftTop = leftTop.copy(y = leftTop.y + 1))
-
-    newPosition.fitsFiguresAndScreen(placedBlocks)
+    moved(Direction.Down).fitsBlocksAndScreen(placedBlocks)
   }
 
-  def fitsFiguresAndScreen(placedFigures: Map[Position, Color])(implicit screen: Screen): Boolean = {
+  def fitsBlocksAndScreen(placedBlocks: Map[Position, Color])(implicit screen: Screen): Boolean = {
     val positions = offsets.map(_.toPosition(center))
 
     lazy val fitsScreen = {
@@ -40,7 +38,7 @@ sealed case class Figure(leftTop: Position, offsets: Set[Offset], color: Color) 
     }
 
     //there is no piece that has common positions with this
-    !placedFigures.keySet.exists(positions.contains) && fitsScreen
+    !(positions exists placedBlocks.keySet.contains) && fitsScreen
   }
 
   override def draw(implicit screen: Screen): Drawable = FigureDrawable(offsets.map(_.toPosition(center).toBlock), color)

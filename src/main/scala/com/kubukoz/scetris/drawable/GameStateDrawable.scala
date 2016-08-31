@@ -8,7 +8,7 @@ import com.kubukoz.scetris.meta.Config._
 
 import scala.swing.{Color, Graphics2D}
 
-case class GameStateDrawable(figure: Figure, placedFigures: Map[Position, Color])(implicit screen: Screen) extends Drawable {
+case class GameStateDrawable(figure: Figure, placedBlocks: Map[Position, Color])(implicit screen: Screen) extends Drawable {
   protected def drawHorizontalLines(g: Graphics2D): Unit = {
     (1 until screen.height).foreach { rowIndex =>
       val y = rowIndex * gridSize + gridBorder * (rowIndex - 1)
@@ -28,7 +28,7 @@ case class GameStateDrawable(figure: Figure, placedFigures: Map[Position, Color]
     drawVerticalLines(g)
     drawHorizontalLines(g)
 
-    (placedFigures ++ figure.toMap).foreach { case (position, color) =>
+    (placedBlocks ++ figure.toMap).foreach { case (position, color) =>
       g.setColor(color)
       position.toBlock.draw.execute(g)
     }
