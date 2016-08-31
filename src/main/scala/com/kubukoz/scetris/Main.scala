@@ -13,7 +13,7 @@ import com.kubukoz.scetris.meta.Config.Screen
 import scala.concurrent.duration.DurationLong
 import scala.io.StdIn
 import scala.swing._
-import scala.swing.event.KeyPressed
+import scala.swing.event.{Key, KeyPressed}
 import scala.util.Random
 
 object Main extends SimpleSwingApplication {
@@ -62,6 +62,8 @@ object Main extends SimpleSwingApplication {
         eventQueue.offer(MoveEvent(direction))
       case KeyPressed(_, RotationKey(rotation), _, _) =>
         eventQueue.offer(RotateEvent(rotation))
+      case KeyPressed(_, Key.Space, _, _) =>
+        eventQueue.offer(DropFigureEvent)
     }
 
     StdIn.readLine("Press enter to close...\n")

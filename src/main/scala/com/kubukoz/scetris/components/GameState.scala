@@ -15,6 +15,13 @@ final case class GameState(figure: Figure, placedFigures: Map[Position, Color])(
     case MoveEvent(Direction.Down) => step
     case MoveEvent(direction) => moveFigure(direction)
     case RotateEvent(direction) => rotateFigure(direction)
+    case DropFigureEvent => dropFigure
+  }
+
+  @tailrec
+  private def dropFigure: GameState = figure.canGoDown(placedFigures) match {
+    case true => copy(figure = figure.moved(Direction.Down)).dropFigure
+    case false => step
   }
 
   override def draw(implicit screen: Screen): Drawable = GameStateDrawable(figure, placedFigures)
