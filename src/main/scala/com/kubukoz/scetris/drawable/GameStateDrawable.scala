@@ -2,35 +2,43 @@ package com.kubukoz.scetris.drawable
 
 import java.awt.Color
 
-import com.kubukoz.scetris.components.{Figure, GameCanvas}
+import cats.effect.IO
+import com.kubukoz.scetris.components.{Figure}
 import com.kubukoz.scetris.domain.Position
 import com.kubukoz.scetris.meta.Config._
 
 import scala.swing.{Color, Graphics2D}
+import cats.implicits._
 
-case class GameStateDrawable(figure: Figure, placedBlocks: Map[Position, Color])(implicit screen: Screen) extends Drawable {
-  protected def drawHorizontalLines(g: Graphics2D): Unit = {
-    (1 until screen.height).foreach { rowIndex =>
+case class GameStateDrawable(figure: Figure, placedBlocks: Map[Position, Color], env: DrawingEnv)
+    extends Drawable {
+  protected def drawHorizontalLines(g: Graphics2D): IO[Unit] = {
+    (1 until env.screen.height).toStream.traverse_ { rowIndex =>
       val y = rowIndex * gridSize + gridBorder * (rowIndex - 1)
-      g.fillRect(0, y, GameCanvas.size.width, gridBorder)
+
+      IO { g.fillRect(0, y, env.canvas.size.width, gridBorder) }
     }
   }
 
-  protected def drawVerticalLines(g: Graphics2D): Unit = {
-    (1 until screen.width).foreach { columnIndex =>
+  protected def drawVerticalLines(g: Graphics2D): IO[Unit] = {
+    (1 until env.screen.width).toStream.traverse_ { columnIndex =>
       val x = columnIndex * gridSize + gridBorder * (columnIndex - 1)
-      g.fillRect(x, 0, gridBorder, GameCanvas.size.height)
+      IO { g.fillRect(x, 0, gridBorder, env.canvas.size.height) }
     }
   }
 
-  override def execute(g: Graphics2D): Unit = {
-    g.setColor(Color.LIGHT_GRAY)
-    drawVerticalLines(g)
-    drawHorizontalLines(g)
+  override def execute(g: Graphics2D): IO[Unit] = {
+    val setColor = IO(g.setColor(Color.LIGHT_GRAY))
 
-    (placedBlocks ++ figure.toMap).foreach { case (position, color) =>
-      g.setColor(color)
-      position.toBlock.draw.execute(g)
+    val drawBlocks = (placedBlocks ++ figure.toMap).toList.traverse_ {
+      case (position, color) =>
+        IO(g.setColor(color)) >>
+          position.toBlock.draw(env).execute(g)
     }
+
+    setColor >>
+      drawVerticalLines(g) >>
+      drawHorizontalLines(g) >>
+      drawBlocks
   }
 }

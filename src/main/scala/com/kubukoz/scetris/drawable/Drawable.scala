@@ -1,9 +1,9 @@
 package com.kubukoz.scetris.drawable
 
-import com.kubukoz.scetris.meta.Config.Screen
+import cats.effect.IO
 
 import scala.swing._
 
-abstract class Drawable(implicit screen: Screen) {
-  def execute(g: Graphics2D): Unit
+abstract class Drawable {
+  def execute(g: Graphics2D): IO[Unit]
 }

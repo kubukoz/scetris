@@ -1,8 +1,6 @@
 package com.kubukoz.scetris
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
+import cats.effect.{ExitCode, IO, IOApp}
 import com.kubukoz.scetris.components.GameCanvas._
 import com.kubukoz.scetris.components.GameState.FigureGenerator
 import com.kubukoz.scetris.components._
@@ -12,63 +10,77 @@ import com.kubukoz.scetris.meta.Config.Screen
 
 import scala.concurrent.duration.DurationLong
 import scala.io.StdIn
-import scala.swing._
+import scala.swing.{SimpleSwingApplication, _}
 import scala.swing.event.{Key, KeyPressed}
 import scala.util.Random
+import fs2.Stream
+import fs2.concurrent.Queue
+import cats.implicits._
+import cats.effect.implicits._
 
-object Main extends SimpleSwingApplication {
-  implicit val screen = Screen.Default
+object Main extends SimpleSwingApplication with IOApp {
+  val screen = Screen.Default
 
-  implicit val newRandomFigure: FigureGenerator = { () => {
+  val newRandomFigure: FigureGenerator = {
     val allSingletons = Figure.Singletons.all
-    allSingletons(Random.nextInt(allSingletons.length))
-  }
-  }
 
-  val initialGameState = GameState(newRandomFigure(), Map.empty)
-
-  val canvas = GameCanvas
-
-  override def top: Frame = new MainFrame {
-    centerOnScreen()
-    resizable = false
-    contents = canvas
+    IO(Random.nextInt(allSingletons.length)).map { index =>
+      allSingletons(index)
+    }
   }
 
-  override def main(args: Array[String]): Unit = {
-    super.main(args)
-    canvas.preferredSize = calculateSize(screen)
+  val initialGameState =
+    newRandomFigure.map(GameState(_, Map.empty, newRandomFigure, screen))
 
-    implicit val system = ActorSystem("system")
-    implicit val mat = ActorMaterializer()
+  val mainFrame = new MainFrame
 
-    val eventSource =
-      Source.queue[GameCommand](bufferSize = 100, overflowStrategy = OverflowStrategy.backpressure)
+  override def top: Frame = {
+    mainFrame.centerOnScreen()
+    mainFrame.resizable = false
+    mainFrame
+  }
 
-    val refreshSource =
-      Source.repeat[GameCommand](MoveCommand(Direction.Down))
-        .throttle(1, 1.second, 1, ThrottleMode.Shaping)
+  override def main(args: Array[String]): Unit = super[IOApp].main(args)
 
-    val updateState = Flow[GameCommand].scan(initialGameState)(_ modifiedWith _)
-    val drawState = Sink.foreach[GameState](canvas.drawState)
-
-    val eventQueue = eventSource.merge(refreshSource)
-      .via(updateState)
-      .to(drawState)
-      .run()
-
-    canvas.reactions += {
-      case KeyPressed(_, DirectionKey(direction), _, _) =>
-        eventQueue.offer(MoveCommand(direction))
-      case KeyPressed(_, RotationKey(rotation), _, _) =>
-        eventQueue.offer(RotateCommand(rotation))
-      case KeyPressed(_, Key.Space, _, _) =>
-        eventQueue.offer(DropFigureCommand)
+  override def run(args: List[String]): IO[ExitCode] = {
+    val runSwing = IO {
+      super[SimpleSwingApplication].main(args.toArray)
+    } >> GameCanvas.make.flatMap { canvas =>
+      IO {
+        canvas.preferredSize = canvas.calculateSize(screen)
+        mainFrame.contents = canvas
+      }.as(canvas)
     }
 
-    StdIn.readLine("Press enter to close...\n")
-    eventQueue.complete()
-    system.terminate()
-    sys.exit(0)
+    runSwing.flatMap { canvas =>
+      IO(StdIn.readLine("Press enter to close...\n")) race handleEvents(canvas).compile.drain
+    }.guarantee(IO(quit()))
+  }.as(ExitCode.Success)
+
+  def handleEvents(gameCanvas: GameCanvas): Stream[IO, Unit] = {
+    val env = new DrawingEnv(screen, gameCanvas)
+
+    val streamIO = Queue.bounded[IO, GameCommand](100).flatMap { events =>
+      val eventSource = Stream
+        .constant[IO, GameCommand](MoveCommand(Direction.Down))
+        .zipLeft(Stream.awakeEvery[IO](1.second)) merge events.dequeue
+
+      val refreshSource = Stream.eval(initialGameState).flatMap { initial =>
+        eventSource.evalScan(initial)(_ modifiedWith _).evalMap(state => gameCanvas.drawState(state, env))
+      }
+
+      IO {
+        gameCanvas.reactions += {
+          case KeyPressed(_, DirectionKey(direction), _, _) =>
+            events.enqueue1(MoveCommand(direction)).unsafeRunSync()
+          case KeyPressed(_, RotationKey(rotation), _, _) =>
+            events.enqueue1(RotateCommand(rotation)).unsafeRunSync()
+          case KeyPressed(_, Key.Space, _, _) =>
+            events.enqueue1(DropFigureCommand).unsafeRunSync()
+        }
+      }.as(refreshSource)
+    }
+
+    Stream.eval(streamIO).flatten
   }
 }

@@ -2,11 +2,11 @@ name := "scetris"
 
 version := "1.0"
 
-scalaVersion := "2.11.8"
-
+scalaVersion := "2.12.8"
 
 libraryDependencies ++= Seq(
-  "org.scala-lang.modules" %% "scala-swing" % "1.0.2",
-  "com.typesafe.akka" %% "akka-stream" % "2.4.9",
-  "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+  "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
+//  "com.typesafe.akka" %% "akka-stream" % "2.5.9",
+  "co.fs2"        %% "fs2-core"  % "1.0.4",
+  "org.scalatest" %% "scalatest" % "3.0.7" % "test"
 )

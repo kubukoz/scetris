@@ -1,3 +1,4 @@
+import cats.effect.IO
 import com.kubukoz.scetris.components.{Figure, GameState}
 import com.kubukoz.scetris.domain.Position
 import com.kubukoz.scetris.drawable.DropFigureCommand
@@ -6,8 +7,10 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class GameStateTests extends FlatSpec with Matchers {
   "withoutCompleteRows" should "remove complete rows" in {
-    implicit val screen = Screen(4, 8)
+    val screen = Screen(4, 8)
+
     val i = Figure.Singletons.I
+
     val initialBlocks = Set(
       i.copy(leftTop = Position(0, 4)),
       i.copy(leftTop = Position(0, 5)),
@@ -16,22 +19,24 @@ class GameStateTests extends FlatSpec with Matchers {
       Figure.Singletons.Z.copy(leftTop = Position(1, 2))
     ).flatMap(_.toMap).toMap
 
-    GameState.blocksWithoutCompleteRows(initialBlocks) shouldBe
+    GameState.blocksWithoutCompleteRows(initialBlocks, screen) shouldBe
       Figure.Singletons.Z.copy(leftTop = Position(1, 6)).toMap
   }
 
   "modifiedWith" should "work with DropFigureCommand" in {
-    implicit val screen = Screen(4, 8)
+    val screen = Screen(4, 8)
+
     import Figure.Singletons._
-    implicit val newFigureGenerator = () => I
+    val newFigureGenerator = IO.pure(I)
 
     val initialBlocks = T.copy(leftTop = Position(1, 4)).toMap
 
-    val state = GameState(Z.copy(leftTop = Position(0, 0)), initialBlocks)
 
-    state.modifiedWith(DropFigureCommand) shouldBe GameState(
-      I.copy(leftTop = Position(0, 0)),
-      initialBlocks ++ Z.copy(leftTop = Position(0, 2)).toMap
-    )
+    val state = GameState(Z.copy(leftTop = Position(0, 0)), initialBlocks, newFigureGenerator, screen)
+
+    val modified = state.modifiedWith(DropFigureCommand).unsafeRunSync()
+
+    modified.figure shouldBe I.copy(leftTop = Position(0, 0))
+    modified.placedBlocks shouldBe initialBlocks ++ Z.copy(leftTop = Position(0, 2)).toMap
   }
 }
