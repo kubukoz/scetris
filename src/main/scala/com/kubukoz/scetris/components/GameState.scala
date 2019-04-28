@@ -3,7 +3,7 @@ package com.kubukoz.scetris.components
 import cats.effect.IO
 import cats.implicits._
 import com.kubukoz.scetris.components.GameState._
-import com.kubukoz.scetris.domain.{Direction, Position, Rotation}
+import com.kubukoz.scetris.domain.{Direction, Move, Position, Rotation}
 import com.kubukoz.scetris.drawable._
 import com.kubukoz.scetris.meta.Config.Screen
 
@@ -11,15 +11,17 @@ import scala.annotation.tailrec
 import scala.swing.Color
 
 final case class GameState(
-  figure: Figure,
+  figure: PositionedFigure,
   placedBlocks: Map[Position, Color],
   figureGenerator: IO[Figure],
   screen: Screen
 ) extends CanDraw {
 
+  private val downMove: Move = Move.fromDirection(Direction.Down)
+
   def modifiedWith(command: GameCommand): IO[GameState] = command match {
     case MoveCommand(Direction.Down) => step
-    case MoveCommand(direction)      => moveFigure(direction).pure[IO]
+    case MoveCommand(direction)      => moveFigure(Move.fromDirection(direction)).pure[IO]
     case RotateCommand(direction)    => rotateFigure(direction).pure[IO]
     case DropFigureCommand           => dropFigure
   }
@@ -27,33 +29,31 @@ final case class GameState(
   @tailrec
   private def dropFigure: IO[GameState] =
     if (figure.canGoDown(placedBlocks, screen)) {
-      copy(figure = figure.moved(Direction.Down)).dropFigure
+      copy(figure = figure.moved(downMove)).dropFigure
     } else step
 
   override def draw(env: DrawingEnv): Drawable = GameStateDrawable(figure, placedBlocks, env)
 
   private def step: IO[GameState] = {
     if (figure.canGoDown(placedBlocks, screen))
-      moveFigure(Direction.Down).pure[IO]
+      moveFigure(downMove).pure[IO]
     else
       figureGenerator.map { tempFigure =>
-        val startingPosition = Position((screen.width - tempFigure.width) / 2, 0)
+        val positionedFigure = PositionedFigure.atInitialPosition(tempFigure, screen)
 
-        val newFigure = tempFigure.copy(leftTop = startingPosition)
-
-        replaceFigureIfPossible(newFigure).copy(
-          placedBlocks = blocksWithoutCompleteRows(placedBlocks ++ figure.toMap, screen)
+        replaceFigureIfPossible(positionedFigure).copy(
+          placedBlocks = blocksWithoutCompleteRows(placedBlocks ++ figure.positionMap, screen)
         )
       }
   }
 
-  private def moveFigure(direction: Direction): GameState =
-    replaceFigureIfPossible(figure.moved(direction))
+  private def moveFigure(move: Move): GameState =
+    replaceFigureIfPossible(figure.moved(move))
 
   private def rotateFigure(rotation: Rotation) =
     replaceFigureIfPossible(figure.rotated(rotation))
 
-  private def replaceFigureIfPossible(newFigure: Figure): GameState = {
+  private def replaceFigureIfPossible(newFigure: PositionedFigure): GameState = {
     if (newFigure.fitsBlocksAndScreen(placedBlocks, screen)) {
       copy(figure = newFigure)
     } else this

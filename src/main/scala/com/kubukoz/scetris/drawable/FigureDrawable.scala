@@ -10,7 +10,7 @@ import scala.swing._
 
 case class FigureDrawable(blocks: Set[Block], color: Color, env: DrawingEnv) extends Drawable {
   override def execute(g: Graphics2D): IO[Unit] = {
-    val setColor = IO(g.setColor(color))
+    val setColor   = IO(g.setColor(color))
     val drawBlocks = blocks.toList.map(_.draw(env)).traverse_(_.execute(g))
 
     setColor >> drawBlocks

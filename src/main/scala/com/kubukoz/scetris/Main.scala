@@ -1,22 +1,22 @@
 package com.kubukoz.scetris
 
-import cats.effect.{ExitCode, IO, IOApp}
-import com.kubukoz.scetris.components.GameCanvas._
+import cats.effect.implicits._
+import cats.effect.{Concurrent, ExitCode, IO, IOApp, Timer}
+import cats.implicits._
+import com.kubukoz.scetris.Main.{newRandomFigure, screen}
 import com.kubukoz.scetris.components.GameState.FigureGenerator
 import com.kubukoz.scetris.components._
 import com.kubukoz.scetris.domain._
 import com.kubukoz.scetris.drawable._
 import com.kubukoz.scetris.meta.Config.Screen
+import fs2.Stream
+import fs2.concurrent.Queue
 
 import scala.concurrent.duration.DurationLong
 import scala.io.StdIn
-import scala.swing.{SimpleSwingApplication, _}
 import scala.swing.event.{Key, KeyPressed}
+import scala.swing.{SimpleSwingApplication, _}
 import scala.util.Random
-import fs2.Stream
-import fs2.concurrent.Queue
-import cats.implicits._
-import cats.effect.implicits._
 
 object Main extends SimpleSwingApplication with IOApp {
   val screen = Screen.Default
@@ -28,9 +28,6 @@ object Main extends SimpleSwingApplication with IOApp {
       allSingletons(index)
     }
   }
-
-  val initialGameState =
-    newRandomFigure.map(GameState(_, Map.empty, newRandomFigure, screen))
 
   val mainFrame = new MainFrame
 
@@ -53,34 +50,55 @@ object Main extends SimpleSwingApplication with IOApp {
     }
 
     runSwing.flatMap { canvas =>
-      IO(StdIn.readLine("Press enter to close...\n")) race handleEvents(canvas).compile.drain
+      IO(StdIn.readLine("Press enter to close...\n")) race Game.instance(canvas, screen).flatMap(_.play)
     }.guarantee(IO(quit()))
   }.as(ExitCode.Success)
 
-  def handleEvents(gameCanvas: GameCanvas): Stream[IO, Unit] = {
-    val env = new DrawingEnv(screen, gameCanvas)
+}
 
-    val streamIO = Queue.bounded[IO, GameCommand](100).flatMap { events =>
-      val eventSource = Stream
-        .constant[IO, GameCommand](MoveCommand(Direction.Down))
-        .zipLeft(Stream.awakeEvery[IO](1.second)) merge events.dequeue
+trait Game {
+  def play: IO[Unit]
+}
 
-      val refreshSource = Stream.eval(initialGameState).flatMap { initial =>
-        eventSource.evalScan(initial)(_ modifiedWith _).evalMap(state => gameCanvas.drawState(state, env))
-      }
+object Game {
 
-      IO {
-        gameCanvas.reactions += {
-          case KeyPressed(_, DirectionKey(direction), _, _) =>
-            events.enqueue1(MoveCommand(direction)).unsafeRunSync()
-          case KeyPressed(_, RotationKey(rotation), _, _) =>
-            events.enqueue1(RotateCommand(rotation)).unsafeRunSync()
-          case KeyPressed(_, Key.Space, _, _) =>
-            events.enqueue1(DropFigureCommand).unsafeRunSync()
+  private val initialGameState: IO[GameState] =
+    newRandomFigure
+      .map(PositionedFigure.atInitialPosition(_, screen))
+      .map(GameState(_, Map.empty, newRandomFigure, screen))
+
+  private val moveDown = MoveCommand(Direction.Down)
+
+  def instance(canvas: GameCanvas, screen: Screen)(implicit concurrent: Concurrent[IO], timer: Timer[IO]): IO[Game] =
+    (initialGameState, Queue.bounded[IO, GameCommand](100)).mapN { (initial, events) =>
+      new Game {
+        private val setListeners: IO[Unit] = {
+          IO {
+            canvas.reactions += {
+              case KeyPressed(_, DirectionKey(direction), _, _) =>
+                events.enqueue1(MoveCommand(direction)).unsafeRunSync()
+              case KeyPressed(_, RotationKey(rotation), _, _) =>
+                events.enqueue1(RotateCommand(rotation)).unsafeRunSync()
+              case KeyPressed(_, Key.Space, _, _) =>
+                events.enqueue1(DropFigureCommand).unsafeRunSync()
+            }
+          }
+        }.void
+
+        val play: IO[Unit] = {
+          val gravity = Stream.constant[IO, GameCommand](Game.moveDown).zipLeft(Stream.awakeEvery[IO](1.second))
+
+          val env = new DrawingEnv(screen, canvas)
+
+          val redrawStream =
+            (gravity merge events.dequeue).evalScan(initial)(_ modifiedWith _).evalMap(canvas.drawState(_, env))
+
+          val drawInitial = canvas.drawState(initial, env)
+
+          val startGame = setListeners >> drawInitial >> redrawStream.compile.drain
+
+          startGame
         }
-      }.as(refreshSource)
+      }
     }
-
-    Stream.eval(streamIO).flatten
-  }
 }

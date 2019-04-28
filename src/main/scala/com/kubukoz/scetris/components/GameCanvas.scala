@@ -25,7 +25,7 @@ object GameCanvas {
       listenTo(keys)
 
       override protected def paintComponent(g: Graphics2D): Unit = {
-        drawable.traverse(_.execute(g)).unsafeRunSync()
+        drawable.traverse_(_.execute(g)).unsafeRunSync()
       }
 
       override def drawState(state: GameState, env: DrawingEnv): IO[Unit] = IO {

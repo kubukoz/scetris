@@ -2,87 +2,38 @@ package com.kubukoz.scetris.components
 
 import java.awt.Color
 
-import com.kubukoz.scetris.components.Figure._
-import com.kubukoz.scetris.domain.Offset.{origin, originPosition}
-import com.kubukoz.scetris.domain.{Direction, Offset, Position, Rotation}
-import com.kubukoz.scetris.drawable.{CanDraw, Drawable, DrawingEnv, FigureDrawable}
-import com.kubukoz.scetris.meta.Config.Screen
-
-import scala.util.Try
 import cats.implicits._
+import com.kubukoz.scetris.components.Figure._
+import com.kubukoz.scetris.domain.Offset.origin
+import com.kubukoz.scetris.domain.{Offset, Rotation}
 
-sealed case class Figure(leftTop: Position, offsets: Set[Offset], color: Color) extends CanDraw {
-  def height = (maxYOffset(offsets) - minYOffset(offsets)).abs + 1
+sealed abstract case class Figure(offsets: Set[Offset], color: Color) {
 
-  def width = (maxXOffset(offsets) - minXOffset(offsets)).abs + 1
-
-  def mirror = copy(offsets = offsets.map(off => off.copy(x = -off.x)))
-
-  val center =
-    Offset(
-      leftTop.x - minXOffset(offsets),
-      leftTop.y - minYOffset(offsets)
+  lazy val offsetBounds: OffsetBounds =
+    OffsetBounds(
+      Bound(minXOffset(offsets), maxXOffset(offsets)),
+      Bound(minYOffset(offsets), maxYOffset(offsets))
     )
 
-  def canGoDown(placedBlocks: Map[Position, Color], screen: Screen): Boolean = {
-    moved(Direction.Down).fitsBlocksAndScreen(placedBlocks, screen)
-  }
-
-  def fitsBlocksAndScreen(placedBlocks: Map[Position, Color], screen: Screen): Boolean = {
-    val positions = offsets.map(_.toPosition(center))
-
-    lazy val fitsScreen = {
-      val fitsScreenBottom = height + leftTop.y <= screen.height
-      val fitsScreenLeft   = leftTop.x >= 0
-      val fitsScreenRight  = width + leftTop.x <= screen.width
-      fitsScreenBottom && fitsScreenLeft && fitsScreenRight
-    }
-
-    //there is no piece that has common positions with this
-    !(positions exists placedBlocks.keySet.contains) && fitsScreen
-  }
-
-  override def draw(env: DrawingEnv): Drawable = FigureDrawable(offsets.map(_.toPosition(center).toBlock), color, env)
-
-  def moved(direction: Direction): Figure = copy(
-    leftTop = leftTop.copy(
-      leftTop.x + direction.x,
-      leftTop.y + direction.y
-    )
-  )
-
-  def rotated(rotation: Rotation): Figure = {
-    val newOffsets = offsets.map(_.rotated(rotation))
-    val newLeftTop = Position(
-      center.x + minXOffset(newOffsets),
-      center.y + minYOffset(newOffsets)
-    )
-
-    copy(newLeftTop, newOffsets)
-  }
-
-  def toMap: Map[Position, Color] = offsets.map(_.toPosition(center)).map(_ -> color).toMap
-
+  def mirror: Figure                      = new Figure(offsets.map(off => off.copy(x = -off.x)), color) {}
+  def rotated(rotation: Rotation): Figure = new Figure(offsets.map(_.rotated(rotation)), color)         {}
+  def withColor(color: Color): Figure     = new Figure(offsets, color)                                  {}
 }
 
 object Figure {
+  private def minXOffset(elems: Set[Offset]): Int = elems.map(_.x).toStream.minimumOption.combineAll
+  private def maxXOffset(elems: Set[Offset]): Int = elems.map(_.x).toStream.maximumOption.combineAll
+  private def minYOffset(elems: Set[Offset]): Int = elems.map(_.y).toStream.minimumOption.combineAll
+  private def maxYOffset(elems: Set[Offset]): Int = elems.map(_.y).toStream.maximumOption.combineAll
 
   object Singletons {
-    val Z   = Figure(originPosition, Set(Offset(-1, -1), Offset(0, -1), origin, Offset(1, 0)), Color.CYAN)
-    val S   = Z.mirror.copy(color = Color.GREEN)
-    val L   = Figure(originPosition, Set(Offset(-1, -1), Offset(-1, 0), origin, Offset(1, 0)), Color.MAGENTA)
-    val J   = L.mirror.copy(color = Color.LIGHT_GRAY)
-    val I   = Figure(originPosition, (-1 to 2).map(Offset(_, 0)).toSet, Color.RED)
-    val O   = Figure(originPosition, Set(Offset(-1, -1), Offset(0, -1), Offset(-1, 0), Offset(0, 0)), Color.BLUE)
-    val T   = Figure(originPosition, Set(Offset(-1, 0), Offset(0, 0), Offset(1, 0), Offset(0, 1)), Color.ORANGE)
-    val all = List(Z, S, L, J, I, O, T)
+    val Z: Figure         = new Figure(Set(Offset(-1, -1), Offset(0, -1), origin, Offset(1, 0)), Color.CYAN) {}
+    val S: Figure         = Z.mirror.withColor(Color.GREEN)
+    val L: Figure         = new Figure(Set(Offset(-1, -1), Offset(-1, 0), origin, Offset(1, 0)), Color.MAGENTA) {}
+    val J: Figure         = L.mirror.withColor(Color.LIGHT_GRAY)
+    val I: Figure         = new Figure((-1 to 2).map(Offset(_, 0)).toSet, Color.RED) {}
+    val O: Figure         = new Figure(Set(Offset(-1, -1), Offset(0, -1), Offset(-1, 0), Offset(0, 0)), Color.BLUE) {}
+    val T: Figure         = new Figure(Set(Offset(-1, 0), Offset(0, 0), Offset(1, 0), Offset(0, 1)), Color.ORANGE) {}
+    val all: List[Figure] = List(Z, S, L, J, I, O, T)
   }
-
-  private def minXOffset(elems: Set[Offset]): Int = elems.map(_.x).toStream.minimumOption.combineAll
-
-  private def maxXOffset(elems: Set[Offset]): Int = elems.map(_.x).toStream.maximumOption.combineAll
-
-  private def minYOffset(elems: Set[Offset]): Int = elems.map(_.y).toStream.minimumOption.combineAll
-
-  private def maxYOffset(elems: Set[Offset]): Int = elems.map(_.y).toStream.maximumOption.combineAll
 }
